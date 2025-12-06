@@ -1,0 +1,399 @@
+/**
+ * B+ Tree 实现
+ * 
+ * B+ Tree 特点：
+ * - 所有数据存储在叶子节点
+ * - 内部节点只存储索引键
+ * - 叶子节点通过链表连接
+ * - 适合范围查询和顺序访问
+ */
+
+export interface BPlusTreeNode<K, V> {
+  id: number;
+  keys: K[];
+  isLeaf: boolean;
+  // 叶子节点: values 存储实际数据
+  // 内部节点: children 存储子节点引用
+  values?: V[];
+  children?: BPlusTreeNode<K, V>[];
+  // 叶子节点的链表指针
+  next?: BPlusTreeNode<K, V>;
+  parent?: BPlusTreeNode<K, V>;
+}
+
+export interface TreeStats {
+  totalNodes: number;
+  leafNodes: number;
+  internalNodes: number;
+  height: number;
+  totalKeys: number;
+  minKeysPerLeaf: number;
+  maxKeysPerLeaf: number;
+  avgKeysPerLeaf: number;
+}
+
+export interface NodeDistribution {
+  nodeId: number;
+  keyCount: number;
+  isLeaf: boolean;
+  depth: number;
+  keys: string[]; // 前几个 key 的字符串表示
+}
+
+let nodeIdCounter = 0;
+
+export class BPlusTree<K, V> {
+  private root: BPlusTreeNode<K, V>;
+  private order: number; // 最大子节点数
+  private compare: (a: K, b: K) => number;
+
+  constructor(
+    order: number = 4,
+    compare: (a: K, b: K) => number = (a, b) => {
+      if (a < b) return -1;
+      if (a > b) return 1;
+      return 0;
+    }
+  ) {
+    this.order = Math.max(3, order); // 最小阶数为 3
+    this.compare = compare;
+    this.root = this.createLeafNode();
+  }
+
+  private createLeafNode(): BPlusTreeNode<K, V> {
+    return {
+      id: nodeIdCounter++,
+      keys: [],
+      isLeaf: true,
+      values: [],
+    };
+  }
+
+  private createInternalNode(): BPlusTreeNode<K, V> {
+    return {
+      id: nodeIdCounter++,
+      keys: [],
+      isLeaf: false,
+      children: [],
+    };
+  }
+
+  /**
+   * 插入键值对
+   */
+  insert(key: K, value: V): void {
+    const leaf = this.findLeaf(key);
+    this.insertIntoLeaf(leaf, key, value);
+
+    // 如果叶子节点满了，需要分裂
+    if (leaf.keys.length >= this.order) {
+      this.splitLeaf(leaf);
+    }
+  }
+
+  /**
+   * 批量插入
+   */
+  insertBatch(entries: { key: K; value: V }[]): void {
+    for (const { key, value } of entries) {
+      this.insert(key, value);
+    }
+  }
+
+  /**
+   * 查找键对应的值
+   */
+  find(key: K): V | undefined {
+    const leaf = this.findLeaf(key);
+    const index = this.findKeyIndex(leaf.keys, key);
+    
+    if (index < leaf.keys.length && this.compare(leaf.keys[index], key) === 0) {
+      return leaf.values![index];
+    }
+    return undefined;
+  }
+
+  /**
+   * 范围查询
+   */
+  range(startKey: K, endKey: K): { key: K; value: V }[] {
+    const results: { key: K; value: V }[] = [];
+    let leaf: BPlusTreeNode<K, V> | undefined = this.findLeaf(startKey);
+
+    while (leaf) {
+      for (let i = 0; i < leaf.keys.length; i++) {
+        const key = leaf.keys[i];
+        if (this.compare(key, startKey) >= 0 && this.compare(key, endKey) <= 0) {
+          results.push({ key, value: leaf.values![i] });
+        } else if (this.compare(key, endKey) > 0) {
+          return results;
+        }
+      }
+      leaf = leaf.next;
+    }
+
+    return results;
+  }
+
+  /**
+   * 获取所有叶子节点（用于可视化）
+   */
+  getAllLeaves(): BPlusTreeNode<K, V>[] {
+    const leaves: BPlusTreeNode<K, V>[] = [];
+    let leaf = this.getFirstLeaf();
+    
+    while (leaf) {
+      leaves.push(leaf);
+      leaf = leaf.next;
+    }
+    
+    return leaves;
+  }
+
+  /**
+   * 获取树的统计信息
+   */
+  getStats(): TreeStats {
+    const leaves = this.getAllLeaves();
+    const allNodes = this.getAllNodes();
+    const leafNodes = leaves.length;
+    const internalNodes = allNodes.length - leafNodes;
+    const totalKeys = leaves.reduce((sum, leaf) => sum + leaf.keys.length, 0);
+    
+    const keysPerLeaf = leaves.map(l => l.keys.length);
+    
+    return {
+      totalNodes: allNodes.length,
+      leafNodes,
+      internalNodes,
+      height: this.getHeight(),
+      totalKeys,
+      minKeysPerLeaf: keysPerLeaf.length > 0 ? Math.min(...keysPerLeaf) : 0,
+      maxKeysPerLeaf: keysPerLeaf.length > 0 ? Math.max(...keysPerLeaf) : 0,
+      avgKeysPerLeaf: leafNodes > 0 ? totalKeys / leafNodes : 0,
+    };
+  }
+
+  /**
+   * 获取节点分布信息（用于可视化）
+   */
+  getNodeDistribution(): NodeDistribution[] {
+    const distribution: NodeDistribution[] = [];
+    
+    const traverse = (node: BPlusTreeNode<K, V>, depth: number) => {
+      distribution.push({
+        nodeId: node.id,
+        keyCount: node.keys.length,
+        isLeaf: node.isLeaf,
+        depth,
+        keys: node.keys.slice(0, 3).map(k => String(k)),
+      });
+      
+      if (!node.isLeaf && node.children) {
+        for (const child of node.children) {
+          traverse(child, depth + 1);
+        }
+      }
+    };
+    
+    traverse(this.root, 0);
+    return distribution;
+  }
+
+  /**
+   * 获取树结构（用于可视化）
+   */
+  getTreeStructure(): BPlusTreeNode<K, V> {
+    return this.root;
+  }
+
+  /**
+   * 获取按层级组织的节点（用于可视化）
+   */
+  getLevelOrder(): BPlusTreeNode<K, V>[][] {
+    const levels: BPlusTreeNode<K, V>[][] = [];
+    let currentLevel = [this.root];
+    
+    while (currentLevel.length > 0) {
+      levels.push(currentLevel);
+      const nextLevel: BPlusTreeNode<K, V>[] = [];
+      
+      for (const node of currentLevel) {
+        if (!node.isLeaf && node.children) {
+          nextLevel.push(...node.children);
+        }
+      }
+      
+      currentLevel = nextLevel;
+    }
+    
+    return levels;
+  }
+
+  private findLeaf(key: K): BPlusTreeNode<K, V> {
+    let node = this.root;
+    
+    while (!node.isLeaf) {
+      let i = 0;
+      while (i < node.keys.length && this.compare(key, node.keys[i]) >= 0) {
+        i++;
+      }
+      node = node.children![i];
+    }
+    
+    return node;
+  }
+
+  private findKeyIndex(keys: K[], key: K): number {
+    let low = 0;
+    let high = keys.length;
+    
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (this.compare(keys[mid], key) < 0) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    
+    return low;
+  }
+
+  private insertIntoLeaf(leaf: BPlusTreeNode<K, V>, key: K, value: V): void {
+    const index = this.findKeyIndex(leaf.keys, key);
+    
+    // 如果键已存在，更新值
+    if (index < leaf.keys.length && this.compare(leaf.keys[index], key) === 0) {
+      leaf.values![index] = value;
+      return;
+    }
+    
+    // 插入新键值对
+    leaf.keys.splice(index, 0, key);
+    leaf.values!.splice(index, 0, value);
+  }
+
+  private splitLeaf(leaf: BPlusTreeNode<K, V>): void {
+    const midIndex = Math.ceil(leaf.keys.length / 2);
+    
+    // 创建新的右叶子节点
+    const rightLeaf = this.createLeafNode();
+    rightLeaf.keys = leaf.keys.splice(midIndex);
+    rightLeaf.values = leaf.values!.splice(midIndex);
+    
+    // 维护叶子节点链表
+    rightLeaf.next = leaf.next;
+    leaf.next = rightLeaf;
+    
+    // 将中间键提升到父节点
+    const promotedKey = rightLeaf.keys[0];
+    this.insertIntoParent(leaf, promotedKey, rightLeaf);
+  }
+
+  private insertIntoParent(
+    leftNode: BPlusTreeNode<K, V>,
+    key: K,
+    rightNode: BPlusTreeNode<K, V>
+  ): void {
+    if (!leftNode.parent) {
+      // 创建新的根节点
+      const newRoot = this.createInternalNode();
+      newRoot.keys = [key];
+      newRoot.children = [leftNode, rightNode];
+      leftNode.parent = newRoot;
+      rightNode.parent = newRoot;
+      this.root = newRoot;
+      return;
+    }
+    
+    const parent = leftNode.parent;
+    const index = this.findKeyIndex(parent.keys, key);
+    
+    parent.keys.splice(index, 0, key);
+    parent.children!.splice(index + 1, 0, rightNode);
+    rightNode.parent = parent;
+    
+    // 如果父节点满了，需要分裂
+    if (parent.keys.length >= this.order) {
+      this.splitInternal(parent);
+    }
+  }
+
+  private splitInternal(node: BPlusTreeNode<K, V>): void {
+    const midIndex = Math.floor(node.keys.length / 2);
+    const promotedKey = node.keys[midIndex];
+    
+    // 创建新的右内部节点
+    const rightNode = this.createInternalNode();
+    rightNode.keys = node.keys.splice(midIndex + 1);
+    rightNode.children = node.children!.splice(midIndex + 1);
+    
+    // 移除提升的键
+    node.keys.pop();
+    
+    // 更新子节点的父引用
+    for (const child of rightNode.children) {
+      child.parent = rightNode;
+    }
+    
+    // 将中间键提升到父节点
+    this.insertIntoParent(node, promotedKey, rightNode);
+  }
+
+  private getFirstLeaf(): BPlusTreeNode<K, V> {
+    let node = this.root;
+    while (!node.isLeaf) {
+      node = node.children![0];
+    }
+    return node;
+  }
+
+  private getAllNodes(): BPlusTreeNode<K, V>[] {
+    const nodes: BPlusTreeNode<K, V>[] = [];
+    
+    const traverse = (node: BPlusTreeNode<K, V>) => {
+      nodes.push(node);
+      if (!node.isLeaf && node.children) {
+        for (const child of node.children) {
+          traverse(child);
+        }
+      }
+    };
+    
+    traverse(this.root);
+    return nodes;
+  }
+
+  private getHeight(): number {
+    let height = 0;
+    let node = this.root;
+    
+    while (node) {
+      height++;
+      if (node.isLeaf) break;
+      node = node.children![0];
+    }
+    
+    return height;
+  }
+
+  /**
+   * 重置节点 ID 计数器（用于测试）
+   */
+  static resetNodeIdCounter(): void {
+    nodeIdCounter = 0;
+  }
+}
+
+/**
+ * 创建用于 bigint 键的 B+ Tree
+ */
+export function createBigIntTree<V>(order: number = 4): BPlusTree<bigint, V> {
+  return new BPlusTree<bigint, V>(order, (a, b) => {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+  });
+}
+

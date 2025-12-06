@@ -1,10 +1,12 @@
 import { TreeStats } from '../lib/bplustree'
+import { IdType } from '../lib/parallelGenerator'
 import './StatsPanel.css'
 
 interface StatsPanelProps {
   stats: TreeStats
   nodeDistribution: Map<number, number>
   generationTime?: number
+  idType?: IdType
 }
 
 function formatTime(ms: number): string {
@@ -12,7 +14,9 @@ function formatTime(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`
 }
 
-export function StatsPanel({ stats, nodeDistribution, generationTime }: StatsPanelProps) {
+export function StatsPanel({ stats, nodeDistribution, generationTime, idType }: StatsPanelProps) {
+  const nodeLabel = idType === 'uuidv7' ? 'Device' : 'Node'
+
   return (
     <div className="stats-panel">
       <div className="panel-header">
@@ -25,6 +29,15 @@ export function StatsPanel({ stats, nodeDistribution, generationTime }: StatsPan
           <span className="time-icon">⏱️</span>
           <span className="time-label">Generated in</span>
           <span className="time-value">{formatTime(generationTime)}</span>
+        </div>
+      )}
+
+      {idType && (
+        <div className="id-type-badge">
+          <span className="badge-icon">{idType === 'snowflake' ? '❄️' : '🆔'}</span>
+          <span className="badge-text">
+            {idType === 'snowflake' ? 'Snowflake ID (64-bit)' : 'UUIDv7 (128-bit)'}
+          </span>
         </div>
       )}
 
@@ -73,7 +86,7 @@ export function StatsPanel({ stats, nodeDistribution, generationTime }: StatsPan
       </div>
 
       <div className="stats-section">
-        <h3 className="section-title">Snowflake Nodes</h3>
+        <h3 className="section-title">{idType === 'uuidv7' ? 'Devices' : 'Snowflake Nodes'}</h3>
         <div className="node-distribution">
           {Array.from(nodeDistribution.entries())
             .sort((a, b) => a[0] - b[0])
@@ -81,7 +94,7 @@ export function StatsPanel({ stats, nodeDistribution, generationTime }: StatsPan
             .map(([nodeId, count]) => (
               <div key={nodeId} className="node-bar-container">
                 <div className="node-bar-label">
-                  <span className="node-id">Node {nodeId}</span>
+                  <span className="node-id">{nodeLabel} {nodeId}</span>
                   <span className="node-count">{count.toLocaleString()}</span>
                 </div>
                 <div className="node-bar-track">
@@ -97,7 +110,7 @@ export function StatsPanel({ stats, nodeDistribution, generationTime }: StatsPan
             ))}
           {nodeDistribution.size > 10 && (
             <div className="more-nodes">
-              +{nodeDistribution.size - 10} more nodes
+              +{nodeDistribution.size - 10} more {idType === 'uuidv7' ? 'devices' : 'nodes'}
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { BPlusTree, createBigIntTree, TreeStats } from './lib/bplustree'
-import { generateIdsParallel, generateIdsSync } from './lib/parallelGenerator'
+import { generateIdsParallel, generateIdsSync, IdType } from './lib/parallelGenerator'
 import { TreeVisualizer } from './components/TreeVisualizer'
 import { DistributionChart } from './components/DistributionChart'
 import { ControlPanel } from './components/ControlPanel'
@@ -9,16 +9,18 @@ import './App.css'
 
 export interface GeneratedData {
   tree: BPlusTree<bigint, number>;
-  ids: { id: bigint; nodeId: number }[];
+  ids: { id: bigint; nodeId: number; raw?: string }[];
   stats: TreeStats;
-  nodeDistribution: Map<number, number>; // nodeId -> count
+  nodeDistribution: Map<number, number>;
   generationTime: number;
+  idType: IdType;
 }
 
 function App() {
   const [nodeCount, setNodeCount] = useState(5)
   const [idsPerNode, setIdsPerNode] = useState(100)
   const [treeOrder, setTreeOrder] = useState(8)
+  const [idType, setIdType] = useState<IdType>('snowflake')
   const [data, setData] = useState<GeneratedData | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState({ phase: '', percent: 0 })
@@ -34,31 +36,29 @@ function App() {
       BPlusTree.resetNodeIdCounter()
       
       const totalIds = nodeCount * idsPerNode
-      let ids: { id: bigint; nodeId: number }[]
+      const idTypeName = idType === 'snowflake' ? 'Snowflake IDs' : 'UUIDv7s'
+      let ids: { id: bigint; nodeId: number; raw?: string }[]
       
-      // Use parallel generation for larger datasets
       if (totalIds > 5000) {
         ids = await generateIdsParallel(
           nodeCount,
           idsPerNode,
+          idType,
           (completed, total) => {
             setProgress({
-              phase: `Generating IDs (${completed}/${total} nodes)...`,
+              phase: `Generating ${idTypeName} (${completed}/${total} nodes)...`,
               percent: Math.round((completed / total) * 50),
             })
           }
         )
       } else {
-        // Use sync generation for small datasets
-        ids = generateIdsSync(nodeCount, idsPerNode)
-        setProgress({ phase: 'Generating IDs...', percent: 50 })
+        ids = generateIdsSync(nodeCount, idsPerNode, idType)
+        setProgress({ phase: `Generating ${idTypeName}...`, percent: 50 })
       }
       
-      // Build B+ Tree
       setProgress({ phase: 'Building B+ Tree...', percent: 55 })
       const tree = createBigIntTree<number>(treeOrder)
       
-      // Insert in chunks to keep UI responsive
       const CHUNK_SIZE = 10000
       for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
         const chunk = ids.slice(i, i + CHUNK_SIZE)
@@ -72,13 +72,11 @@ function App() {
           percent: insertProgress,
         })
         
-        // Yield to event loop
         if (i + CHUNK_SIZE < ids.length) {
           await new Promise(resolve => setTimeout(resolve, 0))
         }
       }
       
-      // Calculate distribution
       setProgress({ phase: 'Calculating statistics...', percent: 95 })
       const nodeDistribution = new Map<number, number>()
       for (const { nodeId } of ids) {
@@ -95,6 +93,7 @@ function App() {
         stats: tree.getStats(),
         nodeDistribution,
         generationTime: endTime - startTime,
+        idType,
       })
     } catch (error) {
       console.error('Generation error:', error)
@@ -102,7 +101,7 @@ function App() {
     } finally {
       setIsGenerating(false)
     }
-  }, [nodeCount, idsPerNode, treeOrder])
+  }, [nodeCount, idsPerNode, treeOrder, idType])
 
   const handleClear = useCallback(() => {
     setData(null)
@@ -115,10 +114,10 @@ function App() {
         <div className="header-content">
           <div className="logo">
             <span className="logo-icon">⚡</span>
-            <h1>B+ Tree <span className="highlight">×</span> Snowflake</h1>
+            <h1>B+ Tree <span className="highlight">×</span> ID Visualizer</h1>
           </div>
           <p className="subtitle">
-            Visualize Snowflake ID distribution in B+ Tree structure
+            Visualize Snowflake ID & UUIDv7 distribution in B+ Tree structure
           </p>
         </div>
         <div className="header-decoration" />
@@ -130,9 +129,11 @@ function App() {
             nodeCount={nodeCount}
             idsPerNode={idsPerNode}
             treeOrder={treeOrder}
+            idType={idType}
             onNodeCountChange={setNodeCount}
             onIdsPerNodeChange={setIdsPerNode}
             onTreeOrderChange={setTreeOrder}
+            onIdTypeChange={setIdType}
             onGenerate={handleGenerate}
             onClear={handleClear}
             isGenerating={isGenerating}
@@ -145,6 +146,7 @@ function App() {
               stats={data.stats} 
               nodeDistribution={data.nodeDistribution}
               generationTime={data.generationTime}
+              idType={data.idType}
             />
           )}
         </aside>
@@ -183,20 +185,20 @@ function App() {
               <h2>Ready to Visualize</h2>
               <p>
                 Configure the parameters and click <strong>Generate</strong> to create 
-                Snowflake IDs and visualize their distribution in a B+ Tree.
+                IDs and visualize their distribution in a B+ Tree.
               </p>
               <div className="empty-state-hint">
                 <div className="hint-item">
                   <span className="hint-number">1</span>
-                  <span>Set number of unique nodes (machines)</span>
+                  <span>Choose ID type (Snowflake or UUIDv7)</span>
                 </div>
                 <div className="hint-item">
                   <span className="hint-number">2</span>
-                  <span>Set IDs per node</span>
+                  <span>Set number of unique nodes/devices</span>
                 </div>
                 <div className="hint-item">
                   <span className="hint-number">3</span>
-                  <span>Adjust B+ Tree order</span>
+                  <span>Set IDs per node and B+ Tree order</span>
                 </div>
               </div>
             </div>

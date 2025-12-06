@@ -1,12 +1,15 @@
+import { IdType } from '../lib/parallelGenerator'
 import './ControlPanel.css'
 
 interface ControlPanelProps {
   nodeCount: number
   idsPerNode: number
   treeOrder: number
+  idType: IdType
   onNodeCountChange: (value: number) => void
   onIdsPerNodeChange: (value: number) => void
   onTreeOrderChange: (value: number) => void
+  onIdTypeChange: (value: IdType) => void
   onGenerate: () => void
   onClear: () => void
   isGenerating: boolean
@@ -18,15 +21,20 @@ export function ControlPanel({
   nodeCount,
   idsPerNode,
   treeOrder,
+  idType,
   onNodeCountChange,
   onIdsPerNodeChange,
   onTreeOrderChange,
+  onIdTypeChange,
   onGenerate,
   onClear,
   isGenerating,
   hasData,
   progress,
 }: ControlPanelProps) {
+  const nodeLabel = idType === 'snowflake' ? 'Nodes' : 'Devices'
+  const maxNodes = idType === 'snowflake' ? 1024 : 1024
+
   return (
     <div className="control-panel">
       <div className="panel-header">
@@ -34,10 +42,43 @@ export function ControlPanel({
         <h2>Configuration</h2>
       </div>
 
+      {/* ID Type Selector */}
       <div className="control-group">
         <label className="control-label">
-          <span className="label-text">Unique Nodes</span>
-          <span className="label-hint">Number of machines generating IDs</span>
+          <span className="label-text">ID Type</span>
+          <span className="label-hint">Choose the ID generation algorithm</span>
+        </label>
+        <div className="id-type-selector">
+          <button
+            className={`id-type-btn ${idType === 'snowflake' ? 'active' : ''}`}
+            onClick={() => onIdTypeChange('snowflake')}
+            disabled={isGenerating}
+          >
+            <span className="id-type-icon">❄️</span>
+            <span className="id-type-name">Snowflake</span>
+            <span className="id-type-bits">64-bit</span>
+          </button>
+          <button
+            className={`id-type-btn ${idType === 'uuidv7' ? 'active' : ''}`}
+            onClick={() => onIdTypeChange('uuidv7')}
+            disabled={isGenerating}
+          >
+            <span className="id-type-icon">🆔</span>
+            <span className="id-type-name">UUIDv7</span>
+            <span className="id-type-bits">128-bit</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="control-group">
+        <label className="control-label">
+          <span className="label-text">Unique {nodeLabel}</span>
+          <span className="label-hint">
+            {idType === 'snowflake' 
+              ? 'Number of machines generating IDs'
+              : 'Number of devices generating UUIDs'
+            }
+          </span>
         </label>
         <div className="input-with-controls">
           <button
@@ -50,15 +91,15 @@ export function ControlPanel({
           <input
             type="number"
             value={nodeCount}
-            onChange={(e) => onNodeCountChange(Math.max(1, Math.min(1024, parseInt(e.target.value) || 1)))}
+            onChange={(e) => onNodeCountChange(Math.max(1, Math.min(maxNodes, parseInt(e.target.value) || 1)))}
             min={1}
-            max={1024}
+            max={maxNodes}
             disabled={isGenerating}
           />
           <button
             className="stepper-btn"
-            onClick={() => onNodeCountChange(Math.min(1024, nodeCount + 1))}
-            disabled={nodeCount >= 1024 || isGenerating}
+            onClick={() => onNodeCountChange(Math.min(maxNodes, nodeCount + 1))}
+            disabled={nodeCount >= maxNodes || isGenerating}
           >
             +
           </button>
@@ -78,8 +119,8 @@ export function ControlPanel({
 
       <div className="control-group">
         <label className="control-label">
-          <span className="label-text">IDs per Node</span>
-          <span className="label-hint">Average IDs generated per node</span>
+          <span className="label-text">IDs per {idType === 'snowflake' ? 'Node' : 'Device'}</span>
+          <span className="label-hint">Number of IDs generated per {idType === 'snowflake' ? 'node' : 'device'}</span>
         </label>
         <div className="input-with-controls">
           <button

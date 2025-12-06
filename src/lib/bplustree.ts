@@ -140,7 +140,7 @@ export class BPlusTree<K, V> {
    */
   getAllLeaves(): BPlusTreeNode<K, V>[] {
     const leaves: BPlusTreeNode<K, V>[] = [];
-    let leaf = this.getFirstLeaf();
+    let leaf: BPlusTreeNode<K, V> | undefined = this.getFirstLeaf();
     
     while (leaf) {
       leaves.push(leaf);

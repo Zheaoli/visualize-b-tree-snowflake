@@ -184,7 +184,7 @@ interface HeatmapViewProps {
   tree: BPlusTree<bigint, number>
 }
 
-function HeatmapView({ ids, tree }: HeatmapViewProps) {
+function HeatmapView({ tree }: HeatmapViewProps) {
   const leaves = tree.getAllLeaves()
   
   if (leaves.length === 0) {

@@ -1,0 +1,254 @@
+.tree-visualizer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.visualizer-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.visualizer-controls button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.visualizer-controls button:hover {
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  color: var(--bg-primary);
+}
+
+.zoom-level {
+  min-width: 50px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.reset-btn {
+  width: auto !important;
+  padding: 0 1rem !important;
+  font-size: 0.8rem !important;
+  margin-left: 0.5rem;
+}
+
+.tree-canvas-container {
+  flex: 1;
+  overflow: hidden;
+  cursor: grab;
+  position: relative;
+  background: 
+    radial-gradient(circle at center, rgba(0, 217, 255, 0.03) 0%, transparent 70%);
+}
+
+.tree-canvas-container:active {
+  cursor: grabbing;
+}
+
+.tree-canvas {
+  display: block;
+  transition: transform 0.05s linear;
+}
+
+/* Connections */
+.connection-line {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 2;
+  transition: stroke 0.2s ease;
+}
+
+/* Nodes */
+.tree-node {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.tree-node:hover {
+  transform: translateY(-2px);
+}
+
+.tree-node .node-bg {
+  fill: var(--bg-card);
+  stroke: var(--border-color);
+  stroke-width: 2;
+  transition: all 0.2s ease;
+}
+
+.tree-node.internal .node-bg {
+  fill: rgba(0, 217, 255, 0.1);
+  stroke: var(--accent-cyan);
+}
+
+.tree-node.leaf .node-bg {
+  fill: rgba(0, 255, 159, 0.1);
+  stroke: var(--accent-green);
+}
+
+.tree-node.hovered .node-bg {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 10px currentColor);
+}
+
+.tree-node.internal.hovered .node-bg {
+  fill: rgba(0, 217, 255, 0.2);
+}
+
+.tree-node.leaf.hovered .node-bg {
+  fill: rgba(0, 255, 159, 0.2);
+}
+
+.node-text {
+  fill: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+/* Badge */
+.badge {
+  fill: var(--accent-magenta);
+}
+
+.badge-text {
+  fill: white;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* Tooltip */
+.node-tooltip {
+  position: absolute;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem;
+  min-width: 180px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  pointer-events: none;
+  animation: tooltip-appear 0.2s ease;
+}
+
+@keyframes tooltip-appear {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.tooltip-header {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tooltip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+
+.tooltip-row span:first-child {
+  color: var(--text-secondary);
+}
+
+.tooltip-row span:last-child {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.tooltip-keys {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.75rem;
+}
+
+.tooltip-keys span:first-child {
+  color: var(--text-muted);
+}
+
+.key-range {
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+}
+
+/* Legend */
+.visualizer-legend {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-tertiary);
+  border-top: 1px solid var(--border-color);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.legend-dot.internal {
+  background: rgba(0, 217, 255, 0.3);
+  border: 2px solid var(--accent-cyan);
+}
+
+.legend-dot.leaf {
+  background: rgba(0, 255, 159, 0.3);
+  border: 2px solid var(--accent-green);
+}
+
+.legend-hint {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+

@@ -1,25 +1,25 @@
 /**
  * Snowflake ID Generator
  * 
- * Snowflake ID 结构 (64 bits):
- * - 1 bit:  符号位 (始终为 0)
- * - 41 bits: 时间戳 (毫秒级，可用约 69 年)
- * - 10 bits: 节点 ID (最多 1024 个节点)
- * - 12 bits: 序列号 (每毫秒最多 4096 个 ID)
+ * Snowflake ID structure (64 bits):
+ * - 1 bit:  sign bit (always 0)
+ * - 41 bits: timestamp (milliseconds, ~69 years)
+ * - 10 bits: node ID (up to 1024 nodes)
+ * - 12 bits: sequence (up to 4096 IDs per millisecond)
  */
 
-// 起始时间戳 (2024-01-01 00:00:00 UTC)
+// Epoch timestamp (2024-01-01 00:00:00 UTC)
 const EPOCH = 1704067200000n;
 
-// 各部分的位数
+// Bit lengths for each component
 const NODE_ID_BITS = 10n;
 const SEQUENCE_BITS = 12n;
 
-// 最大值
+// Maximum values
 const MAX_NODE_ID = (1n << NODE_ID_BITS) - 1n; // 1023
 const MAX_SEQUENCE = (1n << SEQUENCE_BITS) - 1n; // 4095
 
-// 位移量
+// Bit shifts
 const NODE_ID_SHIFT = SEQUENCE_BITS;
 const TIMESTAMP_SHIFT = SEQUENCE_BITS + NODE_ID_BITS;
 
@@ -43,7 +43,7 @@ export class SnowflakeGenerator {
   }
 
   /**
-   * 生成下一个 Snowflake ID
+   * Generate next Snowflake ID
    */
   generate(): bigint {
     let timestamp = this.currentTimestamp();
@@ -53,20 +53,20 @@ export class SnowflakeGenerator {
     }
 
     if (timestamp === this.lastTimestamp) {
-      // 同一毫秒内，递增序列号
+      // Same millisecond, increment sequence
       this.sequence = (this.sequence + 1n) & MAX_SEQUENCE;
       if (this.sequence === 0n) {
-        // 序列号溢出，等待下一毫秒
+        // Sequence overflow, wait for next millisecond
         timestamp = this.waitNextMillis(this.lastTimestamp);
       }
     } else {
-      // 新的毫秒，重置序列号
+      // New millisecond, reset sequence
       this.sequence = 0n;
     }
 
     this.lastTimestamp = timestamp;
 
-    // 组装 Snowflake ID
+    // Assemble Snowflake ID
     const id = 
       ((timestamp - EPOCH) << TIMESTAMP_SHIFT) |
       (this.nodeId << NODE_ID_SHIFT) |
@@ -76,7 +76,7 @@ export class SnowflakeGenerator {
   }
 
   /**
-   * 批量生成 ID
+   * Generate batch of IDs
    */
   generateBatch(count: number): bigint[] {
     const ids: bigint[] = [];
@@ -99,7 +99,7 @@ export class SnowflakeGenerator {
   }
 
   /**
-   * 解析 Snowflake ID 的各个组成部分
+   * Parse Snowflake ID into its components
    */
   static parse(id: bigint): SnowflakeComponents {
     const sequence = id & MAX_SEQUENCE;
@@ -115,14 +115,14 @@ export class SnowflakeGenerator {
   }
 
   /**
-   * 获取 ID 中的时间戳部分（用于可视化分布）
+   * Get timestamp part from ID (for distribution visualization)
    */
   static getTimestampPart(id: bigint): bigint {
     return id >> TIMESTAMP_SHIFT;
   }
 
   /**
-   * 获取 ID 中的节点 ID 部分
+   * Get node ID part from ID
    */
   static getNodeIdPart(id: bigint): number {
     return Number((id >> NODE_ID_SHIFT) & MAX_NODE_ID);
@@ -130,13 +130,13 @@ export class SnowflakeGenerator {
 }
 
 /**
- * 用于模拟多节点生成 ID 的管理器
+ * Manager for simulating multi-node ID generation
  */
 export class MultiNodeSnowflakeManager {
   private generators: Map<number, SnowflakeGenerator> = new Map();
 
   /**
-   * 获取或创建指定节点的生成器
+   * Get or create generator for specified node
    */
   getGenerator(nodeId: number): SnowflakeGenerator {
     if (!this.generators.has(nodeId)) {
@@ -146,10 +146,10 @@ export class MultiNodeSnowflakeManager {
   }
 
   /**
-   * 为多个节点生成 ID
-   * @param nodeCount 节点数量
-   * @param idsPerNode 每个节点生成的 ID 数量
-   * @returns 所有生成的 ID 及其节点信息
+   * Generate IDs for multiple nodes
+   * @param nodeCount Number of nodes
+   * @param idsPerNode Number of IDs to generate per node
+   * @returns All generated IDs with their node info
    */
   generateForNodes(
     nodeCount: number,
@@ -170,10 +170,9 @@ export class MultiNodeSnowflakeManager {
   }
 
   /**
-   * 清除所有生成器
+   * Clear all generators
    */
   clear(): void {
     this.generators.clear();
   }
 }
-

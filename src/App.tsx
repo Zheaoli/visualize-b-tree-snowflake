@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { MultiNodeSnowflakeManager, SnowflakeGenerator } from './lib/snowflake'
+import { MultiNodeSnowflakeManager } from './lib/snowflake'
 import { BPlusTree, createBigIntTree, TreeStats } from './lib/bplustree'
 import { TreeVisualizer } from './components/TreeVisualizer'
 import { DistributionChart } from './components/DistributionChart'

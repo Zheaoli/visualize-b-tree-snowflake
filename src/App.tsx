@@ -79,7 +79,7 @@ function App() {
         </div>
         <div className="header-decoration" />
       </header>
-
+ 
       <main className="app-main">
         <aside className="sidebar">
           <ControlPanel

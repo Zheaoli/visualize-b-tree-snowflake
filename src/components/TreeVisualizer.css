@@ -92,18 +92,13 @@
 /* Nodes */
 .tree-node {
   cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.tree-node:hover {
-  transform: translateY(-2px);
 }
 
 .tree-node .node-bg {
   fill: var(--bg-card);
   stroke: var(--border-color);
   stroke-width: 2;
-  transition: all 0.2s ease;
+  transition: fill 0.15s ease, stroke-width 0.15s ease;
 }
 
 .tree-node.internal .node-bg {
@@ -118,15 +113,14 @@
 
 .tree-node.hovered .node-bg {
   stroke-width: 3;
-  filter: drop-shadow(0 0 10px currentColor);
 }
 
 .tree-node.internal.hovered .node-bg {
-  fill: rgba(0, 217, 255, 0.2);
+  fill: rgba(0, 217, 255, 0.25);
 }
 
 .tree-node.leaf.hovered .node-bg {
-  fill: rgba(0, 255, 159, 0.2);
+  fill: rgba(0, 255, 159, 0.25);
 }
 
 .node-text {

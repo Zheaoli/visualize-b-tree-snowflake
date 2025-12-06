@@ -4,82 +4,82 @@
  */
 
 // Epoch timestamp (2024-01-01 00:00:00 UTC)
-const EPOCH = 1704067200000n;
+const SNOWFLAKE_EPOCH = 1704067200000n;
 
 // Bit lengths for each component
-const NODE_ID_BITS = 10n;
-const SEQUENCE_BITS = 12n;
+const SNOWFLAKE_NODE_ID_BITS = 10n;
+const SNOWFLAKE_SEQUENCE_BITS = 12n;
 
 // Maximum values
-const MAX_SEQUENCE = (1n << SEQUENCE_BITS) - 1n; // 4095
+const SNOWFLAKE_MAX_SEQUENCE = (1n << SNOWFLAKE_SEQUENCE_BITS) - 1n; // 4095
 
 // Bit shifts
-const NODE_ID_SHIFT = SEQUENCE_BITS;
-const TIMESTAMP_SHIFT = SEQUENCE_BITS + NODE_ID_BITS;
+const SNOWFLAKE_NODE_ID_SHIFT = SNOWFLAKE_SEQUENCE_BITS;
+const SNOWFLAKE_TIMESTAMP_SHIFT = SNOWFLAKE_SEQUENCE_BITS + SNOWFLAKE_NODE_ID_BITS;
 
-interface WorkerMessage {
+interface SnowflakeWorkerMessage {
   type: 'generate';
   nodeId: number;
   count: number;
 }
 
-interface WorkerResponse {
+interface SnowflakeWorkerResponse {
   type: 'result';
   nodeId: number;
-  ids: string[]; // bigint as string for transfer
+  ids: string[];
 }
 
-let sequence = 0n;
-let lastTimestamp = -1n;
+let snowflakeSequence = 0n;
+let snowflakeLastTimestamp = -1n;
 
-function currentTimestamp(): bigint {
+function snowflakeCurrentTimestamp(): bigint {
   return BigInt(Date.now());
 }
 
-function generate(nodeId: number): bigint {
+function generateSnowflake(nodeId: number): bigint {
   const nodeIdBigInt = BigInt(nodeId);
-  let timestamp = currentTimestamp();
+  let timestamp = snowflakeCurrentTimestamp();
 
-  if (timestamp === lastTimestamp) {
-    sequence = (sequence + 1n) & MAX_SEQUENCE;
-    if (sequence === 0n) {
+  if (timestamp === snowflakeLastTimestamp) {
+    snowflakeSequence = (snowflakeSequence + 1n) & SNOWFLAKE_MAX_SEQUENCE;
+    if (snowflakeSequence === 0n) {
       // Wait for next millisecond
-      while (timestamp <= lastTimestamp) {
-        timestamp = currentTimestamp();
+      while (timestamp <= snowflakeLastTimestamp) {
+        timestamp = snowflakeCurrentTimestamp();
       }
     }
   } else {
-    sequence = 0n;
+    snowflakeSequence = 0n;
   }
 
-  lastTimestamp = timestamp;
+  snowflakeLastTimestamp = timestamp;
 
   return (
-    ((timestamp - EPOCH) << TIMESTAMP_SHIFT) |
-    (nodeIdBigInt << NODE_ID_SHIFT) |
-    sequence
+    ((timestamp - SNOWFLAKE_EPOCH) << SNOWFLAKE_TIMESTAMP_SHIFT) |
+    (nodeIdBigInt << SNOWFLAKE_NODE_ID_SHIFT) |
+    snowflakeSequence
   );
 }
 
-function generateBatch(nodeId: number, count: number): string[] {
+function generateSnowflakeBatch(nodeId: number, count: number): string[] {
   // Reset state for each node
-  sequence = 0n;
-  lastTimestamp = -1n;
+  snowflakeSequence = 0n;
+  snowflakeLastTimestamp = -1n;
   
   const ids: string[] = [];
   for (let i = 0; i < count; i++) {
-    ids.push(generate(nodeId).toString());
+    ids.push(generateSnowflake(nodeId).toString());
   }
   return ids;
 }
 
 // Worker message handler
-self.onmessage = (e: MessageEvent<WorkerMessage>) => {
+self.onmessage = (e: MessageEvent<SnowflakeWorkerMessage>) => {
   const { type, nodeId, count } = e.data;
   
   if (type === 'generate') {
-    const ids = generateBatch(nodeId, count);
-    const response: WorkerResponse = {
+    const ids = generateSnowflakeBatch(nodeId, count);
+    const response: SnowflakeWorkerResponse = {
       type: 'result',
       nodeId,
       ids,
@@ -88,3 +88,4 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   }
 };
 
+export {};

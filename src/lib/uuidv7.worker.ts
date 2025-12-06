@@ -2,24 +2,22 @@
  * UUIDv7 Generator Web Worker
  */
 
-const MAX_DEVICE_ID = 1023;
-
-interface WorkerMessage {
+interface UUIDv7WorkerMessage {
   type: 'generate';
   deviceId: number;
   count: number;
 }
 
-interface WorkerResponse {
+interface UUIDv7WorkerResponse {
   type: 'result';
   deviceId: number;
   uuids: string[];
 }
 
-let sequence = 0;
-let lastTimestamp = -1;
+let uuidv7Sequence = 0;
+let uuidv7LastTimestamp = -1;
 
-function bytesToUUID(bytes: Uint8Array): string {
+function uuidv7BytesToUUID(bytes: Uint8Array): string {
   const hex = Array.from(bytes)
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
@@ -33,21 +31,21 @@ function bytesToUUID(bytes: Uint8Array): string {
   ].join('-');
 }
 
-function generate(deviceId: number): string {
+function generateUUIDv7(deviceId: number): string {
   let timestamp = Date.now();
 
-  if (timestamp === lastTimestamp) {
-    sequence = (sequence + 1) & 0xFFF;
-    if (sequence === 0) {
-      while (timestamp <= lastTimestamp) {
+  if (timestamp === uuidv7LastTimestamp) {
+    uuidv7Sequence = (uuidv7Sequence + 1) & 0xFFF;
+    if (uuidv7Sequence === 0) {
+      while (timestamp <= uuidv7LastTimestamp) {
         timestamp = Date.now();
       }
     }
   } else {
-    sequence = Math.floor(Math.random() * 0x100);
+    uuidv7Sequence = Math.floor(Math.random() * 0x100);
   }
 
-  lastTimestamp = timestamp;
+  uuidv7LastTimestamp = timestamp;
 
   const bytes = new Uint8Array(16);
 
@@ -60,8 +58,8 @@ function generate(deviceId: number): string {
   bytes[5] = timestamp & 0xFF;
 
   // Version (7) + sequence high
-  bytes[6] = 0x70 | ((sequence >> 8) & 0x0F);
-  bytes[7] = sequence & 0xFF;
+  bytes[6] = 0x70 | ((uuidv7Sequence >> 8) & 0x0F);
+  bytes[7] = uuidv7Sequence & 0xFF;
 
   // Variant (10) + device ID
   bytes[8] = 0x80 | ((deviceId >> 4) & 0x3F);
@@ -72,26 +70,26 @@ function generate(deviceId: number): string {
     bytes[i] = Math.random() * 256 | 0;
   }
 
-  return bytesToUUID(bytes);
+  return uuidv7BytesToUUID(bytes);
 }
 
-function generateBatch(deviceId: number, count: number): string[] {
-  sequence = 0;
-  lastTimestamp = -1;
+function generateUUIDv7Batch(deviceId: number, count: number): string[] {
+  uuidv7Sequence = 0;
+  uuidv7LastTimestamp = -1;
   
   const uuids: string[] = [];
   for (let i = 0; i < count; i++) {
-    uuids.push(generate(deviceId));
+    uuids.push(generateUUIDv7(deviceId));
   }
   return uuids;
 }
 
-self.onmessage = (e: MessageEvent<WorkerMessage>) => {
+self.onmessage = (e: MessageEvent<UUIDv7WorkerMessage>) => {
   const { type, deviceId, count } = e.data;
   
   if (type === 'generate') {
-    const uuids = generateBatch(deviceId, count);
-    const response: WorkerResponse = {
+    const uuids = generateUUIDv7Batch(deviceId, count);
+    const response: UUIDv7WorkerResponse = {
       type: 'result',
       deviceId,
       uuids,
@@ -100,3 +98,4 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   }
 };
 
+export {};

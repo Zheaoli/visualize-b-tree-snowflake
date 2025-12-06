@@ -68,87 +68,15 @@
   overflow: hidden;
   cursor: grab;
   position: relative;
-  background: 
-    radial-gradient(circle at center, rgba(0, 217, 255, 0.03) 0%, transparent 70%);
+  background: var(--bg-primary);
 }
 
 .tree-canvas-container:active {
   cursor: grabbing;
 }
 
-.tree-canvas {
+.tree-canvas-container canvas {
   display: block;
-  transition: transform 0.05s linear;
-}
-
-/* Connections */
-.connection-line {
-  fill: none;
-  stroke: var(--border-color);
-  stroke-width: 2;
-  transition: stroke 0.2s ease;
-}
-
-/* Nodes */
-.tree-node {
-  cursor: pointer;
-}
-
-.tree-node .node-bg {
-  fill: var(--bg-card);
-  stroke: var(--border-color);
-  stroke-width: 2;
-  transition: fill 0.15s ease, stroke-width 0.15s ease;
-}
-
-.tree-node.internal .node-bg {
-  fill: rgba(0, 217, 255, 0.1);
-  stroke: var(--accent-cyan);
-}
-
-.tree-node.leaf .node-bg {
-  fill: rgba(0, 255, 159, 0.1);
-  stroke: var(--accent-green);
-}
-
-.tree-node.hovered .node-bg {
-  stroke-width: 3;
-}
-
-.tree-node.internal.hovered .node-bg {
-  fill: rgba(0, 217, 255, 0.25);
-}
-
-.tree-node.leaf.hovered .node-bg {
-  fill: rgba(0, 255, 159, 0.25);
-}
-
-.node-text {
-  fill: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  pointer-events: none;
-}
-
-/* Badge */
-.badge {
-  fill: var(--accent-magenta);
-}
-
-.badge-text {
-  fill: white;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-/* Root label */
-.root-label {
-  fill: var(--accent-yellow);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
 }
 
 /* Tooltip */
@@ -225,6 +153,34 @@
   color: var(--accent-cyan);
 }
 
+.tooltip-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0.35rem 0;
+}
+
+.tooltip-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.dist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+}
+
+.dist-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
 /* Legend */
 .visualizer-legend {
   display: flex;
@@ -255,7 +211,11 @@
 }
 
 .legend-dot.leaf {
-  background: rgba(0, 255, 159, 0.3);
+  background: linear-gradient(135deg, 
+    hsla(0, 75%, 55%, 0.5), 
+    hsla(137, 75%, 55%, 0.5), 
+    hsla(275, 75%, 55%, 0.5)
+  );
   border: 2px solid var(--accent-green);
 }
 

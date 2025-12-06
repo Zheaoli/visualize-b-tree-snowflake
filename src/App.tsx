@@ -25,23 +25,23 @@ function App() {
   const handleGenerate = useCallback(() => {
     setIsGenerating(true)
     
-    // 使用 setTimeout 让 UI 更新
+    // Use setTimeout to allow UI update
     setTimeout(() => {
       try {
         BPlusTree.resetNodeIdCounter()
         
-        // 创建多节点管理器并生成 ID
+        // Create multi-node manager and generate IDs
         const manager = new MultiNodeSnowflakeManager()
         const ids = manager.generateForNodes(nodeCount, idsPerNode)
         
-        // 创建 B+ Tree 并插入所有 ID
+        // Create B+ Tree and insert all IDs
         const tree = createBigIntTree<number>(treeOrder)
         
         for (const { id, nodeId } of ids) {
           tree.insert(id, nodeId)
         }
         
-        // 计算每个 Snowflake 节点的 ID 分布
+        // Calculate ID distribution per Snowflake node
         const nodeDistribution = new Map<number, number>()
         for (const { nodeId } of ids) {
           nodeDistribution.set(nodeId, (nodeDistribution.get(nodeId) || 0) + 1)

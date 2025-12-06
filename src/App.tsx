@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
-import { MultiNodeSnowflakeManager } from './lib/snowflake'
 import { BPlusTree, createBigIntTree, TreeStats } from './lib/bplustree'
+import { generateIdsParallel, generateIdsSync } from './lib/parallelGenerator'
 import { TreeVisualizer } from './components/TreeVisualizer'
 import { DistributionChart } from './components/DistributionChart'
 import { ControlPanel } from './components/ControlPanel'
@@ -12,6 +12,7 @@ export interface GeneratedData {
   ids: { id: bigint; nodeId: number }[];
   stats: TreeStats;
   nodeDistribution: Map<number, number>; // nodeId -> count
+  generationTime: number;
 }
 
 function App() {
@@ -20,49 +21,92 @@ function App() {
   const [treeOrder, setTreeOrder] = useState(8)
   const [data, setData] = useState<GeneratedData | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [progress, setProgress] = useState({ phase: '', percent: 0 })
   const [activeTab, setActiveTab] = useState<'tree' | 'distribution'>('tree')
 
-  const handleGenerate = useCallback(() => {
+  const handleGenerate = useCallback(async () => {
     setIsGenerating(true)
+    setProgress({ phase: 'Generating IDs...', percent: 0 })
     
-    // Use setTimeout to allow UI update
-    setTimeout(() => {
-      try {
-        BPlusTree.resetNodeIdCounter()
-        
-        // Create multi-node manager and generate IDs
-        const manager = new MultiNodeSnowflakeManager()
-        const ids = manager.generateForNodes(nodeCount, idsPerNode)
-        
-        // Create B+ Tree and insert all IDs
-        const tree = createBigIntTree<number>(treeOrder)
-        
-        for (const { id, nodeId } of ids) {
+    const startTime = performance.now()
+    
+    try {
+      BPlusTree.resetNodeIdCounter()
+      
+      const totalIds = nodeCount * idsPerNode
+      let ids: { id: bigint; nodeId: number }[]
+      
+      // Use parallel generation for larger datasets
+      if (totalIds > 5000) {
+        ids = await generateIdsParallel(
+          nodeCount,
+          idsPerNode,
+          (completed, total) => {
+            setProgress({
+              phase: `Generating IDs (${completed}/${total} nodes)...`,
+              percent: Math.round((completed / total) * 50),
+            })
+          }
+        )
+      } else {
+        // Use sync generation for small datasets
+        ids = generateIdsSync(nodeCount, idsPerNode)
+        setProgress({ phase: 'Generating IDs...', percent: 50 })
+      }
+      
+      // Build B+ Tree
+      setProgress({ phase: 'Building B+ Tree...', percent: 55 })
+      const tree = createBigIntTree<number>(treeOrder)
+      
+      // Insert in chunks to keep UI responsive
+      const CHUNK_SIZE = 10000
+      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+        const chunk = ids.slice(i, i + CHUNK_SIZE)
+        for (const { id, nodeId } of chunk) {
           tree.insert(id, nodeId)
         }
         
-        // Calculate ID distribution per Snowflake node
-        const nodeDistribution = new Map<number, number>()
-        for (const { nodeId } of ids) {
-          nodeDistribution.set(nodeId, (nodeDistribution.get(nodeId) || 0) + 1)
-        }
-        
-        setData({
-          tree,
-          ids,
-          stats: tree.getStats(),
-          nodeDistribution,
+        const insertProgress = 55 + Math.round((i / ids.length) * 40)
+        setProgress({
+          phase: `Inserting into tree (${Math.min(i + CHUNK_SIZE, ids.length).toLocaleString()}/${ids.length.toLocaleString()})...`,
+          percent: insertProgress,
         })
-      } catch (error) {
-        console.error('Generation error:', error)
-      } finally {
-        setIsGenerating(false)
+        
+        // Yield to event loop
+        if (i + CHUNK_SIZE < ids.length) {
+          await new Promise(resolve => setTimeout(resolve, 0))
+        }
       }
-    }, 50)
+      
+      // Calculate distribution
+      setProgress({ phase: 'Calculating statistics...', percent: 95 })
+      const nodeDistribution = new Map<number, number>()
+      for (const { nodeId } of ids) {
+        nodeDistribution.set(nodeId, (nodeDistribution.get(nodeId) || 0) + 1)
+      }
+      
+      const endTime = performance.now()
+      
+      setProgress({ phase: 'Done!', percent: 100 })
+      
+      setData({
+        tree,
+        ids,
+        stats: tree.getStats(),
+        nodeDistribution,
+        generationTime: endTime - startTime,
+      })
+    } catch (error) {
+      console.error('Generation error:', error)
+      setProgress({ phase: 'Error!', percent: 0 })
+    } finally {
+      setIsGenerating(false)
+    }
   }, [nodeCount, idsPerNode, treeOrder])
 
   const handleClear = useCallback(() => {
     setData(null)
+    setProgress({ phase: '', percent: 0 })
   }, [])
 
   return (
@@ -79,7 +123,7 @@ function App() {
         </div>
         <div className="header-decoration" />
       </header>
- 
+
       <main className="app-main">
         <aside className="sidebar">
           <ControlPanel
@@ -93,9 +137,16 @@ function App() {
             onClear={handleClear}
             isGenerating={isGenerating}
             hasData={!!data}
+            progress={progress}
           />
           
-          {data && <StatsPanel stats={data.stats} nodeDistribution={data.nodeDistribution} />}
+          {data && (
+            <StatsPanel 
+              stats={data.stats} 
+              nodeDistribution={data.nodeDistribution}
+              generationTime={data.generationTime}
+            />
+          )}
         </aside>
 
         <section className="content">
@@ -157,4 +208,3 @@ function App() {
 }
 
 export default App
-

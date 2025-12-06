@@ -25,6 +25,34 @@
   margin: 0;
 }
 
+.generation-time {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(0, 255, 159, 0.1);
+  border: 1px solid rgba(0, 255, 159, 0.3);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.time-icon {
+  font-size: 1rem;
+}
+
+.time-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.time-value {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent-green);
+}
+
 .stats-section {
   margin-bottom: 1.25rem;
 }

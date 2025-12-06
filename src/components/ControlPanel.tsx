@@ -11,6 +11,7 @@ interface ControlPanelProps {
   onClear: () => void
   isGenerating: boolean
   hasData: boolean
+  progress?: { phase: string; percent: number }
 }
 
 export function ControlPanel({
@@ -24,6 +25,7 @@ export function ControlPanel({
   onClear,
   isGenerating,
   hasData,
+  progress,
 }: ControlPanelProps) {
   return (
     <div className="control-panel">
@@ -41,7 +43,7 @@ export function ControlPanel({
           <button
             className="stepper-btn"
             onClick={() => onNodeCountChange(Math.max(1, nodeCount - 1))}
-            disabled={nodeCount <= 1}
+            disabled={nodeCount <= 1 || isGenerating}
           >
             −
           </button>
@@ -51,11 +53,12 @@ export function ControlPanel({
             onChange={(e) => onNodeCountChange(Math.max(1, Math.min(1024, parseInt(e.target.value) || 1)))}
             min={1}
             max={1024}
+            disabled={isGenerating}
           />
           <button
             className="stepper-btn"
             onClick={() => onNodeCountChange(Math.min(1024, nodeCount + 1))}
-            disabled={nodeCount >= 1024}
+            disabled={nodeCount >= 1024 || isGenerating}
           >
             +
           </button>
@@ -67,6 +70,7 @@ export function ControlPanel({
             onChange={(e) => onNodeCountChange(parseInt(e.target.value))}
             min={1}
             max={50}
+            disabled={isGenerating}
           />
           <span className="range-value">{nodeCount}</span>
         </div>
@@ -81,21 +85,22 @@ export function ControlPanel({
           <button
             className="stepper-btn"
             onClick={() => onIdsPerNodeChange(Math.max(1, idsPerNode - 10))}
-            disabled={idsPerNode <= 1}
+            disabled={idsPerNode <= 1 || isGenerating}
           >
             −
           </button>
           <input
             type="number"
             value={idsPerNode}
-            onChange={(e) => onIdsPerNodeChange(Math.max(1, Math.min(10000, parseInt(e.target.value) || 1)))}
+            onChange={(e) => onIdsPerNodeChange(Math.max(1, Math.min(100000, parseInt(e.target.value) || 1)))}
             min={1}
-            max={10000}
+            max={100000}
+            disabled={isGenerating}
           />
           <button
             className="stepper-btn"
-            onClick={() => onIdsPerNodeChange(Math.min(10000, idsPerNode + 10))}
-            disabled={idsPerNode >= 10000}
+            onClick={() => onIdsPerNodeChange(Math.min(100000, idsPerNode + 10))}
+            disabled={idsPerNode >= 100000 || isGenerating}
           >
             +
           </button>
@@ -103,12 +108,13 @@ export function ControlPanel({
         <div className="control-range">
           <input
             type="range"
-            value={idsPerNode}
+            value={Math.min(idsPerNode, 5000)}
             onChange={(e) => onIdsPerNodeChange(parseInt(e.target.value))}
             min={1}
-            max={1000}
+            max={5000}
+            disabled={isGenerating}
           />
-          <span className="range-value">{idsPerNode}</span>
+          <span className="range-value">{idsPerNode.toLocaleString()}</span>
         </div>
       </div>
 
@@ -121,7 +127,7 @@ export function ControlPanel({
           <button
             className="stepper-btn"
             onClick={() => onTreeOrderChange(Math.max(3, treeOrder - 1))}
-            disabled={treeOrder <= 3}
+            disabled={treeOrder <= 3 || isGenerating}
           >
             −
           </button>
@@ -131,11 +137,12 @@ export function ControlPanel({
             onChange={(e) => onTreeOrderChange(Math.max(3, Math.min(32, parseInt(e.target.value) || 3)))}
             min={3}
             max={32}
+            disabled={isGenerating}
           />
           <button
             className="stepper-btn"
             onClick={() => onTreeOrderChange(Math.min(32, treeOrder + 1))}
-            disabled={treeOrder >= 32}
+            disabled={treeOrder >= 32 || isGenerating}
           >
             +
           </button>
@@ -147,6 +154,7 @@ export function ControlPanel({
             onChange={(e) => onTreeOrderChange(parseInt(e.target.value))}
             min={3}
             max={32}
+            disabled={isGenerating}
           />
           <span className="range-value">{treeOrder}</span>
         </div>
@@ -156,6 +164,19 @@ export function ControlPanel({
         <span className="preview-label">Total IDs:</span>
         <span className="preview-value">{(nodeCount * idsPerNode).toLocaleString()}</span>
       </div>
+
+      {isGenerating && progress && (
+        <div className="progress-container">
+          <div className="progress-text">{progress.phase}</div>
+          <div className="progress-bar">
+            <div 
+              className="progress-fill" 
+              style={{ width: `${progress.percent}%` }}
+            />
+          </div>
+          <div className="progress-percent">{progress.percent}%</div>
+        </div>
+      )}
 
       <div className="button-group">
         <button
@@ -176,7 +197,7 @@ export function ControlPanel({
           )}
         </button>
         
-        {hasData && (
+        {hasData && !isGenerating && (
           <button className="clear-btn" onClick={onClear}>
             <span className="btn-icon">🗑️</span>
             Clear
@@ -186,4 +207,3 @@ export function ControlPanel({
     </div>
   )
 }
-

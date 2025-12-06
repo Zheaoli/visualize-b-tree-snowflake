@@ -4,15 +4,29 @@ import './StatsPanel.css'
 interface StatsPanelProps {
   stats: TreeStats
   nodeDistribution: Map<number, number>
+  generationTime?: number
 }
 
-export function StatsPanel({ stats, nodeDistribution }: StatsPanelProps) {
+function formatTime(ms: number): string {
+  if (ms < 1000) return `${ms.toFixed(0)}ms`
+  return `${(ms / 1000).toFixed(2)}s`
+}
+
+export function StatsPanel({ stats, nodeDistribution, generationTime }: StatsPanelProps) {
   return (
     <div className="stats-panel">
       <div className="panel-header">
         <span className="panel-icon">📈</span>
         <h2>Statistics</h2>
       </div>
+
+      {generationTime !== undefined && (
+        <div className="generation-time">
+          <span className="time-icon">⏱️</span>
+          <span className="time-label">Generated in</span>
+          <span className="time-value">{formatTime(generationTime)}</span>
+        </div>
+      )}
 
       <div className="stats-section">
         <h3 className="section-title">B+ Tree</h3>
@@ -22,15 +36,15 @@ export function StatsPanel({ stats, nodeDistribution }: StatsPanelProps) {
             <span className="stat-label">Height</span>
           </div>
           <div className="stat-item">
-            <span className="stat-value">{stats.totalNodes}</span>
+            <span className="stat-value">{stats.totalNodes.toLocaleString()}</span>
             <span className="stat-label">Total Nodes</span>
           </div>
           <div className="stat-item">
-            <span className="stat-value">{stats.leafNodes}</span>
+            <span className="stat-value">{stats.leafNodes.toLocaleString()}</span>
             <span className="stat-label">Leaf Nodes</span>
           </div>
           <div className="stat-item">
-            <span className="stat-value">{stats.internalNodes}</span>
+            <span className="stat-value">{stats.internalNodes.toLocaleString()}</span>
             <span className="stat-label">Internal</span>
           </div>
         </div>
@@ -68,7 +82,7 @@ export function StatsPanel({ stats, nodeDistribution }: StatsPanelProps) {
               <div key={nodeId} className="node-bar-container">
                 <div className="node-bar-label">
                   <span className="node-id">Node {nodeId}</span>
-                  <span className="node-count">{count}</span>
+                  <span className="node-count">{count.toLocaleString()}</span>
                 </div>
                 <div className="node-bar-track">
                   <div
@@ -91,4 +105,3 @@ export function StatsPanel({ stats, nodeDistribution }: StatsPanelProps) {
     </div>
   )
 }
-

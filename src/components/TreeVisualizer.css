@@ -45,11 +45,22 @@
   color: var(--text-secondary);
 }
 
-.reset-btn {
+.reset-btn,
+.fit-btn {
   width: auto !important;
-  padding: 0 1rem !important;
-  font-size: 0.8rem !important;
-  margin-left: 0.5rem;
+  padding: 0 0.75rem !important;
+  font-size: 0.85rem !important;
+  margin-left: 0.25rem;
+}
+
+.tree-info {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
 }
 
 .tree-canvas-container {
@@ -135,6 +146,15 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
+}
+
+/* Root label */
+.root-label {
+  fill: var(--accent-yellow);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
 }
 
 /* Tooltip */

@@ -19,11 +19,11 @@ interface Connection {
 }
 
 const NODE_HEIGHT = 40
-const NODE_MIN_WIDTH = 60
-const NODE_PADDING = 8
-const LEVEL_GAP = 80
-const NODE_GAP = 20
-const CHAR_WIDTH = 8
+const NODE_MIN_WIDTH = 80
+const NODE_PADDING = 12
+const LEVEL_GAP = 100
+const NODE_GAP = 16
+const CHAR_WIDTH = 7
 
 export function TreeVisualizer({ tree }: TreeVisualizerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -33,10 +33,9 @@ export function TreeVisualizer({ tree }: TreeVisualizerProps) {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [hoveredNode, setHoveredNode] = useState<number | null>(null)
 
-  const levels = useMemo(() => tree.getLevelOrder(), [tree])
-
-  // Calculate node positions
+  // Calculate node positions using proper tree layout
   const { positions, connections, dimensions } = useMemo(() => {
+    const root = tree.getTreeStructure()
     const positions: NodePosition[] = []
     const connections: Connection[] = []
     const nodePositionMap = new Map<number, NodePosition>()
@@ -44,77 +43,107 @@ export function TreeVisualizer({ tree }: TreeVisualizerProps) {
     // Calculate width for each node based on keys
     const getNodeWidth = (node: BPlusTreeNode<bigint, number>) => {
       const keyCount = node.keys.length
+      if (keyCount === 0) return NODE_MIN_WIDTH
       const displayText = node.keys.slice(0, 3).map(k => formatKey(k)).join(' | ')
       const textWidth = displayText.length * CHAR_WIDTH + (keyCount > 3 ? 30 : 0)
       return Math.max(NODE_MIN_WIDTH, textWidth + NODE_PADDING * 2)
     }
 
-    // First pass: calculate positions bottom-up for leaf placement
-    const levelWidths: number[] = []
-    const levelNodes: { node: BPlusTreeNode<bigint, number>; width: number }[][] = []
-
-    for (let i = 0; i < levels.length; i++) {
-      const level = levels[i]
-      const nodes = level.map(node => ({
-        node,
-        width: getNodeWidth(node),
-      }))
-      levelNodes.push(nodes)
-      const totalWidth = nodes.reduce((sum, n) => sum + n.width, 0) + (nodes.length - 1) * NODE_GAP
-      levelWidths.push(totalWidth)
-    }
-
-    const maxWidth = Math.max(...levelWidths)
-
-    // Second pass: assign x positions centered
-    for (let i = 0; i < levelNodes.length; i++) {
-      const nodes = levelNodes[i]
-      const totalWidth = levelWidths[i]
-      let startX = (maxWidth - totalWidth) / 2
-
-      for (const { node, width } of nodes) {
-        const pos: NodePosition = {
-          node,
-          x: startX,
-          y: i * LEVEL_GAP,
-          width,
-        }
-        positions.push(pos)
-        nodePositionMap.set(node.id, pos)
-        startX += width + NODE_GAP
+    // Calculate subtree width (for proper positioning)
+    const calculateSubtreeWidth = (node: BPlusTreeNode<bigint, number>): number => {
+      if (node.isLeaf || !node.children || node.children.length === 0) {
+        return getNodeWidth(node)
       }
+      
+      let childrenWidth = 0
+      for (let i = 0; i < node.children.length; i++) {
+        childrenWidth += calculateSubtreeWidth(node.children[i])
+        if (i < node.children.length - 1) {
+          childrenWidth += NODE_GAP
+        }
+      }
+      
+      return Math.max(getNodeWidth(node), childrenWidth)
     }
 
-    // Calculate connections
-    for (const pos of positions) {
-      if (!pos.node.isLeaf && pos.node.children) {
-        for (const child of pos.node.children) {
+    // Position nodes recursively
+    const positionNode = (
+      node: BPlusTreeNode<bigint, number>,
+      x: number,
+      y: number,
+      availableWidth: number
+    ): void => {
+      const nodeWidth = getNodeWidth(node)
+      const nodeX = x + (availableWidth - nodeWidth) / 2
+
+      const pos: NodePosition = {
+        node,
+        x: nodeX,
+        y,
+        width: nodeWidth,
+      }
+      positions.push(pos)
+      nodePositionMap.set(node.id, pos)
+
+      if (!node.isLeaf && node.children && node.children.length > 0) {
+        // Calculate children positions
+        const childrenWidths = node.children.map(child => calculateSubtreeWidth(child))
+        const totalChildrenWidth = childrenWidths.reduce((sum, w) => sum + w, 0) + 
+          (node.children.length - 1) * NODE_GAP
+
+        let childX = x + (availableWidth - totalChildrenWidth) / 2
+
+        for (let i = 0; i < node.children.length; i++) {
+          const child = node.children[i]
+          const childWidth = childrenWidths[i]
+          
+          positionNode(child, childX, y + LEVEL_GAP, childWidth)
+          
+          // Add connection
           const childPos = nodePositionMap.get(child.id)
           if (childPos) {
             connections.push({
-              from: { x: pos.x + pos.width / 2, y: pos.y + NODE_HEIGHT },
+              from: { x: nodeX + nodeWidth / 2, y: y + NODE_HEIGHT },
               to: { x: childPos.x + childPos.width / 2, y: childPos.y },
             })
           }
+          
+          childX += childWidth + NODE_GAP
         }
       }
     }
+
+    // Calculate total width and position tree
+    const totalWidth = calculateSubtreeWidth(root)
+    const treeHeight = getTreeHeight(root) * LEVEL_GAP
+
+    positionNode(root, 0, 0, totalWidth)
 
     return {
       positions,
       connections,
       dimensions: {
-        width: maxWidth + 100,
-        height: levels.length * LEVEL_GAP + 100,
+        width: totalWidth + 100,
+        height: treeHeight + 100,
       },
     }
-  }, [levels])
+  }, [tree])
 
   // Reset view when tree changes
   useEffect(() => {
-    setScale(1)
-    setOffset({ x: 50, y: 50 })
-  }, [tree])
+    if (containerRef.current) {
+      const containerWidth = containerRef.current.clientWidth
+      const treeWidth = dimensions.width
+      
+      // Auto-fit scale
+      const fitScale = Math.min(1, (containerWidth - 100) / treeWidth)
+      setScale(Math.max(0.2, fitScale))
+      
+      // Center horizontally
+      const offsetX = Math.max(50, (containerWidth - treeWidth * fitScale) / 2)
+      setOffset({ x: offsetX, y: 50 })
+    }
+  }, [tree, dimensions])
 
   // Mouse handlers for pan
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -146,23 +175,53 @@ export function TreeVisualizer({ tree }: TreeVisualizerProps) {
   }
 
   const handleReset = () => {
-    setScale(1)
-    setOffset({ x: 50, y: 50 })
+    if (containerRef.current) {
+      const containerWidth = containerRef.current.clientWidth
+      const fitScale = Math.min(1, (containerWidth - 100) / dimensions.width)
+      setScale(Math.max(0.2, fitScale))
+      const offsetX = Math.max(50, (containerWidth - dimensions.width * fitScale) / 2)
+      setOffset({ x: offsetX, y: 50 })
+    }
+  }
+
+  const handleFitView = () => {
+    if (containerRef.current) {
+      const containerWidth = containerRef.current.clientWidth
+      const containerHeight = containerRef.current.clientHeight
+      
+      const scaleX = (containerWidth - 100) / dimensions.width
+      const scaleY = (containerHeight - 100) / dimensions.height
+      const fitScale = Math.min(scaleX, scaleY, 1)
+      
+      setScale(Math.max(0.1, fitScale))
+      setOffset({
+        x: (containerWidth - dimensions.width * fitScale) / 2,
+        y: (containerHeight - dimensions.height * fitScale) / 2,
+      })
+    }
   }
 
   return (
     <div className="tree-visualizer">
       <div className="visualizer-controls">
-        <button onClick={() => setScale(s => Math.min(3, s * 1.2))}>
+        <button onClick={() => setScale(s => Math.min(3, s * 1.2))} title="Zoom In">
           <span>+</span>
         </button>
         <span className="zoom-level">{Math.round(scale * 100)}%</span>
-        <button onClick={() => setScale(s => Math.max(0.1, s * 0.8))}>
+        <button onClick={() => setScale(s => Math.max(0.1, s * 0.8))} title="Zoom Out">
           <span>−</span>
         </button>
-        <button onClick={handleReset} className="reset-btn">
+        <button onClick={handleFitView} className="fit-btn" title="Fit to View">
+          ⊡
+        </button>
+        <button onClick={handleReset} className="reset-btn" title="Reset View">
           Reset
         </button>
+        <div className="tree-info">
+          <span>Nodes: {positions.length}</span>
+          <span>•</span>
+          <span>Leaves: {positions.filter(p => p.node.isLeaf).length}</span>
+        </div>
       </div>
 
       <div
@@ -190,8 +249,8 @@ export function TreeVisualizer({ tree }: TreeVisualizerProps) {
                 key={i}
                 className="connection-line"
                 d={`M ${conn.from.x} ${conn.from.y} 
-                    C ${conn.from.x} ${conn.from.y + 30},
-                      ${conn.to.x} ${conn.to.y - 30},
+                    C ${conn.from.x} ${conn.from.y + 40},
+                      ${conn.to.x} ${conn.to.y - 40},
                       ${conn.to.x} ${conn.to.y}`}
               />
             ))}
@@ -237,6 +296,18 @@ export function TreeVisualizer({ tree }: TreeVisualizerProps) {
                     {pos.node.keys.length}
                   </text>
                 </g>
+
+                {/* Root indicator */}
+                {pos.y === 0 && (
+                  <text
+                    className="root-label"
+                    x={pos.width / 2}
+                    y={-16}
+                    textAnchor="middle"
+                  >
+                    ROOT
+                  </text>
+                )}
               </g>
             ))}
           </g>
@@ -270,15 +341,23 @@ export function TreeVisualizer({ tree }: TreeVisualizerProps) {
   )
 }
 
+function getTreeHeight(node: BPlusTreeNode<bigint, number>): number {
+  if (node.isLeaf || !node.children || node.children.length === 0) {
+    return 1
+  }
+  return 1 + Math.max(...node.children.map(getTreeHeight))
+}
+
 function formatKey(key: bigint): string {
   const str = key.toString()
-  if (str.length > 6) {
-    return str.slice(0, 3) + '…' + str.slice(-3)
+  if (str.length > 8) {
+    return str.slice(0, 4) + '…' + str.slice(-3)
   }
   return str
 }
 
 function formatNodeKeys(node: BPlusTreeNode<bigint, number>): string {
+  if (node.keys.length === 0) return '∅'
   const keys = node.keys.slice(0, 3).map(k => formatKey(k))
   if (node.keys.length > 3) {
     keys.push('…')
@@ -344,4 +423,3 @@ function NodeTooltip({ node, offset, scale, position }: TooltipProps) {
     </div>
   )
 }
-

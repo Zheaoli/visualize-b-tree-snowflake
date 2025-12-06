@@ -1,0 +1,152 @@
+:root {
+  /* Cyberpunk / Retro Terminal Theme */
+  --bg-primary: #0a0e14;
+  --bg-secondary: #0d1117;
+  --bg-tertiary: #161b22;
+  --bg-card: #1a1f2e;
+  --border-color: #30363d;
+  --border-glow: #00d9ff;
+  
+  /* Neon accent colors */
+  --accent-cyan: #00d9ff;
+  --accent-magenta: #ff0080;
+  --accent-yellow: #ffcc00;
+  --accent-green: #00ff9f;
+  --accent-purple: #bd00ff;
+  --accent-orange: #ff6b35;
+  
+  /* Text colors */
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #484f58;
+  
+  /* Gradients */
+  --gradient-glow: linear-gradient(135deg, #00d9ff 0%, #bd00ff 50%, #ff0080 100%);
+  --gradient-card: linear-gradient(145deg, rgba(26, 31, 46, 0.9) 0%, rgba(13, 17, 23, 0.95) 100%);
+  
+  /* Shadows */
+  --shadow-glow-cyan: 0 0 20px rgba(0, 217, 255, 0.3);
+  --shadow-glow-magenta: 0 0 20px rgba(255, 0, 128, 0.3);
+  
+  /* Fonts */
+  --font-display: 'Outfit', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-display);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+/* Animated background grid */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(0, 217, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 217, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan);
+}
+
+/* Selection */
+::selection {
+  background: rgba(0, 217, 255, 0.3);
+  color: var(--text-primary);
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+/* Button base */
+button {
+  font-family: var(--font-display);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* Input base */
+input, select {
+  font-family: var(--font-mono);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+input:hover, select:hover {
+  border-color: var(--accent-cyan);
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: var(--shadow-glow-cyan);
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
